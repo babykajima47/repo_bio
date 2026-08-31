@@ -34,7 +34,7 @@ docker run -d --name biolink-mysql --network biolink-net \
 docker build -t vn-biolink-hub .
 
 docker run -d --name vn-biolink-hub --network biolink-net \
-  -p 8080:80 \
+  -p 8080:3000 \
   -e APP_ENV=local \
   -e ADMIN_EMAIL=admin@example.com \
   -e ADMIN_PASSWORD=ChangeMe123! \
@@ -55,7 +55,7 @@ docker run -d --name vn-biolink-hub --network biolink-net \
 docker build -t vn-biolink-hub .
 
 docker run -d --name vn-biolink-hub \
-  -p 8080:80 \
+  -p 8080:3000 \
   -e APP_ENV=production \
   -e ADMIN_EMAIL=admin@shop-cua-ban.vn \
   -e ADMIN_PASSWORD="MatKhauManh123!" \

@@ -36,6 +36,14 @@ echo "[entrypoint] MySQL đã sẵn sàng."
 mkdir -p /var/www/html/public/uploads
 chown -R www-data:www-data /var/www/html/public/uploads || true
 
+# Apache mặc định Listen 80 (build time) — đổi theo $PORT lúc runtime để 1 image
+# chạy đúng trên mọi nền tảng đòi cổng khác nhau (Vibe Host Git-URL deploy mặc
+# định healthcheck cổng 3000, nền tảng khác có thể set PORT khác qua env).
+APP_PORT="${PORT:-3000}"
+echo "[entrypoint] Cấu hình Apache lắng nghe cổng ${APP_PORT}..."
+sed -ri "s/^Listen .*/Listen ${APP_PORT}/" /etc/apache2/ports.conf
+sed -ri "s/<VirtualHost \*:[0-9]+>/<VirtualHost *:${APP_PORT}>/" /etc/apache2/sites-available/000-default.conf
+
 echo "[entrypoint] Chạy migrate + seed/update admin (database/init.php)..."
 php /var/www/html/database/init.php
 

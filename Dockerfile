@@ -30,7 +30,12 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && mkdir -p /var/www/html/public/uploads \
     && chown -R www-data:www-data /var/www/html/public/uploads
 
-EXPOSE 80
+# PORT mặc định 3000 — khớp default health-check của Vibe Host (Git URL deploy
+# không đọc vibehost.json, giả định cổng kiểu Node.js). Đổi Listen/VirtualHost
+# theo $PORT ngay trong docker-entrypoint.sh (chạy lúc container start, không
+# phải build time) để 1 image chạy đúng trên cả platform đòi cổng khác nhau.
+ENV PORT=3000
+EXPOSE 3000
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["apache2-foreground"]
