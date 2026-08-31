@@ -1,0 +1,8 @@
+RewriteEngine On
+
+# File tĩnh có thật (ảnh upload, favicon...) thì phục vụ trực tiếp
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Còn lại đưa hết về front controller duy nhất
+RewriteRule ^ index.php [L]

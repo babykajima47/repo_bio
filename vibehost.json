@@ -1,0 +1,39 @@
+{
+  "name": "VN BioLink Hub",
+  "slug": "vn-biolink-hub",
+  "category": "Công cụ hỗ trợ Marketing",
+  "description": "Hệ thống tạo trang Bio Link giới thiệu bản thân, liên kết mạng xã hội và thu thập khách hàng tiềm năng.",
+  "repository": "https://github.com/matbaogit/vn-biolink-hub",
+  "runtime": {
+    "port": 80,
+    "resources": { "ram": "512MB", "cpu": 0.5 },
+    "healthPath": "/health",
+    "healthExpected": { "status": "up", "database": "connected" }
+  },
+  "env": [
+    { "key": "APP_ENV",        "required": false, "secret": false, "generated": false, "default": "production" },
+    { "key": "ADMIN_EMAIL",    "required": true,  "secret": false, "generated": false, "default": null },
+    { "key": "ADMIN_PASSWORD", "required": true,  "secret": true,  "generated": true,  "default": null }
+  ],
+  "database": {
+    "engine": "mysql",
+    "version": "8.0",
+    "envMapping": {
+      "host": "DB_HOST",
+      "port": "DB_PORT",
+      "database": "DB_DATABASE",
+      "user": "DB_USERNAME",
+      "password": "DB_PASSWORD"
+    }
+  },
+  "volumes": [
+    { "path": "/var/www/html/public/uploads", "purpose": "Ảnh đại diện admin upload" }
+  ],
+  "firstRunAdmin": {
+    "mechanism": "env",
+    "emailVar": "ADMIN_EMAIL",
+    "passwordVar": "ADMIN_PASSWORD",
+    "seededBy": "docker-entrypoint.sh -> database/init.php (INSERT nếu chưa có user nào, UPDATE để đồng bộ nếu đã có — chạy lại mỗi lần container khởi động)",
+    "loginPath": "/login"
+  }
+}
