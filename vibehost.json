@@ -3,7 +3,7 @@
   "slug": "vn-biolink-hub",
   "category": "Công cụ hỗ trợ Marketing",
   "description": "Hệ thống tạo trang Bio Link giới thiệu bản thân, liên kết mạng xã hội và thu thập khách hàng tiềm năng.",
-  "repository": "https://github.com/matbaogit/vn-biolink-hub",
+  "repository": "https://github.com/babykajima47/repo_bio",
   "runtime": {
     "port": 80,
     "resources": { "ram": "512MB", "cpu": 0.5 },
