@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-08-31T16:58:09+07:00",
+  "branch": "main",
+  "commit": "ff35812a29235923976ffd3eebfd43feb03d1fae",
+  "scope": "full_codebase",
+  "stack": "PHP 8.2 (Apache) + MySQL 8.0",
+  "verdict": "pass_with_warnings",
+  "critical": 0,
+  "high": 0,
+  "medium": 2,
+  "low": 2,
+  "report_path": ".vibe/vibesec-2026-08-31-0955.md"
+}
