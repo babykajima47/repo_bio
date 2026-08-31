@@ -1,6 +1,5 @@
 .git
 .env
-docker-compose.yml
 *.md
 public/uploads/*
 !public/uploads/.gitkeep

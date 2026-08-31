@@ -13,16 +13,38 @@ Repo: `github.com/matbaogit/vn-biolink-hub`
 
 - Docker Engine ≥ 20.10.
 - Runtime bên trong image: **PHP 8.2** (Apache mod_php) + extension `pdo_mysql`.
-- Cần **MySQL 8.0** chạy sẵn (image không tự đóng gói MySQL) — dùng
-  `docker-compose.yml` đi kèm để dựng nhanh cho local, hoặc trỏ vào MySQL do
-  Vibe Host tự cấp khi deploy thật.
+- Cần **MySQL 8.0** chạy sẵn (image chỉ đóng gói app — single container, không
+  bundle MySQL) — tự chạy 1 container MySQL cạnh bên cho local, hoặc trỏ vào
+  MySQL do Vibe Host tự cấp qua `envMapping` khi deploy thật.
 
 ## [2] Lệnh dựng & chạy
 
-**Cách A — copy-paste chạy ngay bằng docker-compose (khuyên dùng để test local):**
+**Cách A — copy-paste chạy ngay bằng docker run thuần (test local, không cần docker-compose):**
 
 ```bash
-docker compose up -d --build
+docker network create biolink-net
+
+docker run -d --name biolink-mysql --network biolink-net \
+  -e MYSQL_ROOT_PASSWORD=root_secret \
+  -e MYSQL_DATABASE=vn_biolink_hub \
+  -e MYSQL_USER=biolink \
+  -e MYSQL_PASSWORD=biolink_secret \
+  mysql:8.0
+
+docker build -t vn-biolink-hub .
+
+docker run -d --name vn-biolink-hub --network biolink-net \
+  -p 8080:80 \
+  -e APP_ENV=local \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e ADMIN_PASSWORD=ChangeMe123! \
+  -e DB_HOST=biolink-mysql \
+  -e DB_PORT=3306 \
+  -e DB_DATABASE=vn_biolink_hub \
+  -e DB_USERNAME=biolink \
+  -e DB_PASSWORD=biolink_secret \
+  vn-biolink-hub
+
 # App:   http://localhost:8080
 # Admin: http://localhost:8080/login  (admin@example.com / ChangeMe123!)
 ```
@@ -132,5 +154,9 @@ database/schema.sql     Bảng users (kiêm hồ sơ chủ trang), links, leads 
 database/init.php       CLI: import schema + seed/update admin từ ADMIN_EMAIL/ADMIN_PASSWORD
 Dockerfile              php:8.2-apache + pdo_mysql, DocumentRoot -> public/
 docker-entrypoint.sh    Retry chờ MySQL sẵn sàng -> chạy init.php -> apache2-foreground
-docker-compose.yml      Tiện ích dev/test local (app + MySQL 8.0), không dùng khi deploy thật
 ```
+
+Lưu ý: image chỉ đóng gói app (single container theo đúng chuẩn Vibe Host) —
+không có `docker-compose.yml` trong repo. MySQL luôn là service riêng, trỏ vào
+qua 5 biến `DB_*` (xem mục [2] Cách A để tự chạy 1 container MySQL cạnh bên
+lúc test local).

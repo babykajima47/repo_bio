@@ -30,8 +30,12 @@ database/schema.sql      3 bảng: users (kiêm hồ sơ chủ trang), links, le
 database/init.php        CLI: import schema (idempotent) + seed/update tài khoản admin
 Dockerfile               Build image runtime, set DocumentRoot -> public/
 docker-entrypoint.sh     Chờ MySQL sẵn sàng (qua PDO) -> chạy init.php -> apache2-foreground
-docker-compose.yml       Tiện ích dev/test local (app + MySQL 8.0)
 ```
+
+**Single container theo chuẩn Vibe Host** — không có `docker-compose.yml`
+trong repo (đã bỏ, vì nền tảng deploy nhận diện path đơn-container qua sự
+vắng mặt của compose file; có file compose ở root sẽ bị hiểu nhầm là
+multi-container stack). MySQL luôn là service ngoài, cấp qua `envMapping`.
 
 ## Mô hình dữ liệu
 
