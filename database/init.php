@@ -61,6 +61,19 @@ try {
 }
 echo "[init] Schema OK.\n";
 
+// Migration cho DB đã deploy trước khi có cột job_title — MySQL không hỗ trợ
+// "ALTER TABLE ... ADD COLUMN IF NOT EXISTS" (chỉ MariaDB có cú pháp đó), nên
+// tự kiểm tra qua information_schema trước khi ALTER cho an toàn, idempotent.
+$colCheck = $pdo->prepare(
+    "SELECT COUNT(*) c FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'job_title'"
+);
+$colCheck->execute();
+if ((int) $colCheck->fetch()['c'] === 0) {
+    echo "[init] Thêm cột users.job_title (migration từ bản cũ)...\n";
+    $pdo->exec("ALTER TABLE users ADD COLUMN job_title VARCHAR(150) NULL AFTER display_name");
+}
+
 echo "[init] Đồng bộ tài khoản quản trị từ ADMIN_EMAIL/ADMIN_PASSWORD...\n";
 
 $owner = $pdo->query('SELECT id FROM users ORDER BY id ASC LIMIT 1')->fetch();
@@ -68,15 +81,16 @@ $passwordHash = password_hash($adminPassword, PASSWORD_BCRYPT);
 
 if ($owner === false) {
     $stmt = $pdo->prepare(
-        'INSERT INTO users (email, password_hash, display_name, bio_text, theme_color)
-         VALUES (?, ?, ?, ?, ?)'
+        'INSERT INTO users (email, password_hash, display_name, job_title, bio_text, theme_color)
+         VALUES (?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $adminEmail,
         $passwordHash,
         'Chủ trang',
+        'Chuyên viên Marketing',
         'Chào mừng bạn đến với trang giới thiệu của tôi!',
-        '#4f46e5',
+        '#6C4EF6',
     ]);
     echo "[init] Đã tạo tài khoản quản trị đầu tiên: {$adminEmail}\n";
 } else {

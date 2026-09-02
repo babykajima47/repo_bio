@@ -8,9 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
     email          VARCHAR(190)     NOT NULL,
     password_hash  VARCHAR(255)     NOT NULL,
     display_name   VARCHAR(150)     NOT NULL DEFAULT 'Chủ trang',
+    job_title      VARCHAR(150)     NULL,
     bio_text       TEXT             NULL,
     avatar_path    VARCHAR(255)     NULL,
-    theme_color    VARCHAR(7)       NOT NULL DEFAULT '#4f46e5',
+    theme_color    VARCHAR(7)       NOT NULL DEFAULT '#6C4EF6',
     zalo_phone     VARCHAR(20)      NULL,
     hotline_phone  VARCHAR(20)      NULL,
     created_at     DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -18,6 +19,11 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lưu ý: cột job_title đã có sẵn trong CREATE TABLE trên (áp dụng cho lần cài mới).
+-- Với DB đã deploy trước khi có cột này, database/init.php tự kiểm tra qua
+-- information_schema rồi ALTER TABLE thêm cột — MySQL không hỗ trợ cú pháp
+-- "ADD COLUMN IF NOT EXISTS" (chỉ MariaDB có) nên không thể làm thẳng trong file .sql này.
 
 CREATE TABLE IF NOT EXISTS links (
     id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -34,6 +40,18 @@ CREATE TABLE IF NOT EXISTS links (
     PRIMARY KEY (id),
     KEY idx_links_user_id (user_id),
     CONSTRAINT fk_links_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Log từng lượt click (khác với links.clicks chỉ là bộ đếm cộng dồn) — cần có
+-- mốc thời gian thật để tính "lượt click hôm nay" + biểu đồ 7 ngày trên dashboard.
+CREATE TABLE IF NOT EXISTS link_clicks (
+    id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    link_id     INT UNSIGNED NOT NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_link_clicks_link_id (link_id),
+    KEY idx_link_clicks_created_at (created_at),
+    CONSTRAINT fk_link_clicks_link FOREIGN KEY (link_id) REFERENCES links (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS leads (
