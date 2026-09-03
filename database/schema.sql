@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS links (
                      NOT NULL DEFAULT 'custom',
     label        VARCHAR(150)     NOT NULL,
     url          VARCHAR(500)     NOT NULL,
+    color        VARCHAR(7)       NULL,
+    open_new_tab TINYINT(1)       NOT NULL DEFAULT 1,
     position     INT              NOT NULL DEFAULT 0,
     clicks       INT UNSIGNED     NOT NULL DEFAULT 0,
     is_active    TINYINT(1)       NOT NULL DEFAULT 1,
@@ -59,7 +61,15 @@ CREATE TABLE IF NOT EXISTS leads (
     name         VARCHAR(150)     NOT NULL,
     phone        VARCHAR(20)      NOT NULL,
     note         TEXT             NULL,
+    status       ENUM('new','contacted','resolved') NOT NULL DEFAULT 'new',
+    ip_address   VARCHAR(45)      NULL,
+    user_agent   VARCHAR(255)     NULL,
+    source_path  VARCHAR(255)     NULL,
     created_at   DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_leads_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lưu ý: các cột status/ip_address/user_agent/source_path đã có sẵn trong
+-- CREATE TABLE trên (áp dụng cho lần cài mới). DB cũ được database/init.php
+-- tự kiểm tra qua information_schema rồi ALTER TABLE thêm cột còn thiếu.

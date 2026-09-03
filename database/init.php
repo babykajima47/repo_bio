@@ -61,18 +61,29 @@ try {
 }
 echo "[init] Schema OK.\n";
 
-// Migration cho DB đã deploy trước khi có cột job_title — MySQL không hỗ trợ
+// Migration cho DB đã deploy trước khi có các cột mới — MySQL không hỗ trợ
 // "ALTER TABLE ... ADD COLUMN IF NOT EXISTS" (chỉ MariaDB có cú pháp đó), nên
 // tự kiểm tra qua information_schema trước khi ALTER cho an toàn, idempotent.
-$colCheck = $pdo->prepare(
-    "SELECT COUNT(*) c FROM information_schema.columns
-     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'job_title'"
-);
-$colCheck->execute();
-if ((int) $colCheck->fetch()['c'] === 0) {
-    echo "[init] Thêm cột users.job_title (migration từ bản cũ)...\n";
-    $pdo->exec("ALTER TABLE users ADD COLUMN job_title VARCHAR(150) NULL AFTER display_name");
+function addColumnIfMissing(PDO $pdo, string $table, string $column, string $ddl): void
+{
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) c FROM information_schema.columns
+         WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?"
+    );
+    $stmt->execute([$table, $column]);
+    if ((int) $stmt->fetch()['c'] === 0) {
+        echo "[init] Thêm cột {$table}.{$column} (migration từ bản cũ)...\n";
+        $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$ddl}");
+    }
 }
+
+addColumnIfMissing($pdo, 'users', 'job_title', "job_title VARCHAR(150) NULL AFTER display_name");
+addColumnIfMissing($pdo, 'leads', 'status', "status ENUM('new','contacted','resolved') NOT NULL DEFAULT 'new' AFTER note");
+addColumnIfMissing($pdo, 'leads', 'ip_address', "ip_address VARCHAR(45) NULL AFTER status");
+addColumnIfMissing($pdo, 'leads', 'user_agent', "user_agent VARCHAR(255) NULL AFTER ip_address");
+addColumnIfMissing($pdo, 'leads', 'source_path', "source_path VARCHAR(255) NULL AFTER user_agent");
+addColumnIfMissing($pdo, 'links', 'color', "color VARCHAR(7) NULL AFTER url");
+addColumnIfMissing($pdo, 'links', 'open_new_tab', "open_new_tab TINYINT(1) NOT NULL DEFAULT 1 AFTER color");
 
 echo "[init] Đồng bộ tài khoản quản trị từ ADMIN_EMAIL/ADMIN_PASSWORD...\n";
 
