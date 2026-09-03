@@ -12,6 +12,14 @@ declare(strict_types=1);
 // BOOTSTRAP
 // ==========================================================================
 
+// Hỗ trợ hosting FTP thuần (không set được biến môi trường kiểu Docker/Vibe
+// Host): nếu có config.php cạnh index.php, nó tự putenv() các biến DB_* —
+// phần còn lại của app không đổi gì (vẫn đọc qua getenv() như bình thường).
+// File này KHÔNG được commit (xem .gitignore) vì chứa thông tin kết nối thật.
+if (file_exists(__DIR__ . '/config.php')) {
+    require __DIR__ . '/config.php';
+}
+
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
 
@@ -90,7 +98,7 @@ function e(?string $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-function jsonResponse(array $data, int $status = 200): never
+function jsonResponse(array $data, int $status = 200)
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
@@ -98,7 +106,7 @@ function jsonResponse(array $data, int $status = 200): never
     exit;
 }
 
-function redirect(string $to): never
+function redirect(string $to)
 {
     header('Location: ' . $to, true, 302);
     exit;
@@ -151,7 +159,7 @@ function siteOwner(): ?array
 function normalizePhoneVn(string $phone): string
 {
     $digits = preg_replace('/\D+/', '', $phone) ?? '';
-    if (str_starts_with($digits, '84')) {
+    if (substr($digits, 0, 2) === '84') {
         $digits = '0' . substr($digits, 2);
     }
     return $digits;
@@ -160,7 +168,7 @@ function normalizePhoneVn(string $phone): string
 function zaloUrl(string $phone): string
 {
     $digits = normalizePhoneVn($phone);
-    $intl   = str_starts_with($digits, '0') ? '84' . substr($digits, 1) : $digits;
+    $intl   = substr($digits, 0, 1) === '0' ? '84' . substr($digits, 1) : $digits;
     return 'https://zalo.me/' . $intl;
 }
 
@@ -172,7 +180,7 @@ function linkHref(string $type, string $url): string
     return $url;
 }
 
-function validThemeColor(mixed $value, string $fallback = '#6C4EF6'): string
+function validThemeColor($value, string $fallback = '#6C4EF6'): string
 {
     return (is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value)) ? $value : $fallback;
 }
@@ -837,7 +845,7 @@ HTML;
 // CONTROLLERS
 // ==========================================================================
 
-function ctrlHealth(): never
+function ctrlHealth()
 {
     try {
         db()->query('SELECT 1');
@@ -847,7 +855,7 @@ function ctrlHealth(): never
     }
 }
 
-function ctrlBio(): never
+function ctrlBio()
 {
     $user = siteOwner();
     if (!$user) {
@@ -861,7 +869,7 @@ function ctrlBio(): never
     exit;
 }
 
-function ctrlApiClick(): never
+function ctrlApiClick()
 {
     $input = json_decode(file_get_contents('php://input') ?: '[]', true);
     $id = (int) ($input['id'] ?? 0);
@@ -877,7 +885,7 @@ function ctrlApiClick(): never
     jsonResponse(['ok' => true]);
 }
 
-function ctrlApiLead(): never
+function ctrlApiLead()
 {
     $input = json_decode(file_get_contents('php://input') ?: '[]', true);
 
@@ -902,7 +910,7 @@ function ctrlApiLead(): never
     jsonResponse(['ok' => true, 'message' => 'Cảm ơn bạn! Chúng tôi sẽ liên hệ lại sớm nhất.']);
 }
 
-function ctrlLoginShow(): never
+function ctrlLoginShow()
 {
     if (currentUser()) {
         redirect('/admin');
@@ -911,7 +919,7 @@ function ctrlLoginShow(): never
     exit;
 }
 
-function ctrlLoginSubmit(): never
+function ctrlLoginSubmit()
 {
     if (!csrfCheck($_POST['csrf'] ?? null)) {
         redirect('/login?error=' . urlencode('Phiên làm việc hết hạn, thử lại.'));
@@ -946,7 +954,7 @@ function ctrlLoginSubmit(): never
     redirect('/admin');
 }
 
-function ctrlLogout(): never
+function ctrlLogout()
 {
     $_SESSION = [];
     session_destroy();
@@ -1004,7 +1012,7 @@ function buildDashboardStats(int $userId): array
     ];
 }
 
-function ctrlAdminDashboard(): never
+function ctrlAdminDashboard()
 {
     $user = requireLogin();
     $tab  = $_GET['tab'] ?? 'dashboard';
@@ -1070,7 +1078,7 @@ function handleAvatarUpload(array $file): string
     return UPLOAD_WEB . '/' . $filename;
 }
 
-function ctrlAdminProfileSave(): never
+function ctrlAdminProfileSave()
 {
     $user = requireLogin();
 
@@ -1128,7 +1136,7 @@ function readLinkInput(): array
     return [$type, $label, $url];
 }
 
-function ctrlAdminLinkCreate(): never
+function ctrlAdminLinkCreate()
 {
     $user = requireLogin();
     if (!csrfCheck($_POST['csrf'] ?? null)) {
@@ -1143,7 +1151,7 @@ function ctrlAdminLinkCreate(): never
     redirect('/admin?tab=links');
 }
 
-function ctrlAdminLinkUpdate(int $id): never
+function ctrlAdminLinkUpdate(int $id)
 {
     requireLogin();
     if (!csrfCheck($_POST['csrf'] ?? null)) {
@@ -1157,7 +1165,7 @@ function ctrlAdminLinkUpdate(int $id): never
     redirect('/admin?tab=links');
 }
 
-function ctrlAdminLinkToggle(int $id): never
+function ctrlAdminLinkToggle(int $id)
 {
     requireLogin();
     if (!csrfCheck($_POST['csrf'] ?? null)) {
@@ -1167,7 +1175,7 @@ function ctrlAdminLinkToggle(int $id): never
     redirect('/admin?tab=links');
 }
 
-function ctrlAdminLinkDelete(int $id): never
+function ctrlAdminLinkDelete(int $id)
 {
     requireLogin();
     if (!csrfCheck($_POST['csrf'] ?? null)) {
@@ -1177,7 +1185,7 @@ function ctrlAdminLinkDelete(int $id): never
     redirect('/admin?tab=links');
 }
 
-function ctrlAdminLeadDelete(int $id): never
+function ctrlAdminLeadDelete(int $id)
 {
     requireLogin();
     if (!csrfCheck($_POST['csrf'] ?? null)) {
