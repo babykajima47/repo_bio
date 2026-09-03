@@ -63,6 +63,20 @@ const LEAD_STATUS = [
     'resolved'  => ['label' => 'Đã xử lý',     'class' => 'bg-emerald-50 text-emerald-700'],
 ];
 
+// Whitelist slug template Bio Link — validate cả khi lưu (POST) lẫn khi render (fallback minimal).
+const BIO_TEMPLATES = [
+    'minimal'   => ['label' => 'Minimal Light',       'desc' => 'Sáng · Tối giản · Tinh tế'],
+    'dark'      => ['label' => 'Dark Pro',            'desc' => 'Dark · Sang trọng · Chuyên nghiệp'],
+    'gradient'  => ['label' => 'Gradient Modern',     'desc' => 'Gradient nhẹ · Trẻ trung · Hiện đại'],
+    'nature'    => ['label' => 'Nature Green',        'desc' => 'Xanh lá · Thiên nhiên · Organic'],
+    'creative'  => ['label' => 'Creative Portfolio',  'desc' => 'Cá tính · Sáng tạo · Nổi bật'],
+    'corporate' => ['label' => 'Business Corporate',  'desc' => 'Doanh nghiệp · Chuyên nghiệp · Nghiêm túc'],
+    'fashion'   => ['label' => 'Fashion Lifestyle',   'desc' => 'Thời trang · Lifestyle · Editorial'],
+    'tech'      => ['label' => 'Tech Neon',           'desc' => 'Công nghệ · Dark · Neon'],
+    'elegant'   => ['label' => 'Elegant Classic',     'desc' => 'Thanh lịch · Cao cấp · Tối giản'],
+    'modern'    => ['label' => 'Ultra Modern',        'desc' => 'Modern · Monochrome · High-end'],
+];
+
 // ==========================================================================
 // ICONS — SVG line icon, stroke 1.8, không dùng emoji/font icon ngoài.
 // ==========================================================================
@@ -110,6 +124,7 @@ const ICONS = [
     'youtube'      => '<path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>',
     'mail'         => '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/>',
     'menu'         => '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
+    'layers'       => '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
 ];
 
 function icon(string $name, string $class = 'h-5 w-5', string $fill = 'none'): string
@@ -446,6 +461,7 @@ function layoutAdmin(string $title, string $active, string $bodyHtml, array $use
         'links'      => ['/admin/links', 'link', 'Liên kết'],
         'leads'      => ['/admin/leads', 'users', 'Khách hàng (Leads)'],
         'statistics' => ['/admin/statistics', 'barChart', 'Thống kê'],
+        'templates'  => ['/admin/templates', 'layers', 'Giao diện'],
         'settings'   => ['/admin/settings', 'sliders', 'Cài đặt'],
     ];
 
@@ -588,90 +604,18 @@ function statusBadge(string $status): string
 // VIEW: PUBLIC BIO PAGE
 // ==========================================================================
 
-function viewBio(array $user, array $links): string
+/**
+ * JS dùng CHUNG cho mọi template Bio Link (click-tracking + lead AJAX).
+ * Hợp đồng markup mà mỗi template PHẢI tuân theo để JS này hoạt động:
+ *   - Mỗi liên kết: thẻ <a class="biolink-item" data-link-id="{id}">
+ *   - Form lead:    <form id="leadForm"> có input name=name/phone/note,
+ *                   input hidden name=csrf, button id="leadSubmitBtn"
+ *   - 2 vùng phản hồi: #leadSuccess (ẩn mặc định), #leadError
+ * Không copy đoạn JS này vào từng file template — chỉ viết 1 lần ở đây.
+ */
+function bioPageScript(): string
 {
-    $name     = e($user['display_name']);
-    $jobTitle = e($user['job_title'] ?? '');
-    $bio      = nl2br(e($user['bio_text'] ?? ''));
-    $color    = validThemeColor($user['theme_color']);
-    $avatar   = $user['avatar_path'] ?? null;
-
-    $avatarHtml = $avatar
-        ? '<img src="' . e($avatar) . '" alt="' . $name . '" class="h-24 w-24 rounded-full object-cover" style="border:3px solid white;box-shadow:0 0 0 1px #E5E7EB">'
-        : '<div class="flex h-24 w-24 items-center justify-center rounded-full text-3xl font-bold text-white" style="background:' . e($color) . '">' . e(mb_substr($user['display_name'] ?: 'B', 0, 1)) . '</div>';
-
-    $verifiedBadge = '<span class="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky-500 align-middle">' . icon('check', 'h-2.5 w-2.5', 'none') . '</span>';
-    $verifiedBadge = str_replace('stroke="currentColor" stroke-width="1.8"', 'stroke="white" stroke-width="3"', $verifiedBadge);
-
-    $quickButtons = '';
-    if (!empty($user['hotline_phone'])) {
-        $quickButtons .= '<a href="tel:' . e(normalizePhoneVn($user['hotline_phone'])) . '" class="flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style="background:#16A34A">' . icon('phone', 'h-4 w-4', 'none') . '<span>Gọi Hotline</span></a>';
-    }
-    if (!empty($user['zalo_phone'])) {
-        $quickButtons .= '<a href="' . e(zaloUrl($user['zalo_phone'])) . '" target="_blank" rel="noopener" class="flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style="background:#0068FF">' . icon('messageCircle', 'h-4 w-4', 'none') . '<span>Nhắn Zalo</span></a>';
-    }
-
-    $linksHtml = '';
-    foreach ($links as $link) {
-        $def   = LINK_TYPES[$link['type']] ?? LINK_TYPES['custom'];
-        $ic    = icon($def['icon'], 'h-4 w-4', $def['icon'] === 'facebook' || $def['icon'] === 'youtube' ? 'currentColor' : 'none');
-        $href  = e(linkHref($link['type'], $link['url']));
-        $id    = (int) $link['id'];
-        $label = e($link['label']);
-        $linksHtml .= <<<HTML
-<a href="{$href}" target="_blank" rel="noopener" data-link-id="{$id}" class="biolink-item group flex items-center gap-3 rounded-lg bg-white px-4 transition hover:-translate-y-0.5" style="height:54px;border:1px solid #E5E7EB">
-  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style="background:{$def['color']}1a;color:{$def['color']}">{$ic}</span>
-  <span class="flex-1 truncate text-sm font-medium" style="color:#111827">{$label}</span>
-  <span class="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500">
-HTML;
-        $linksHtml .= icon('chevronRight', 'h-4 w-4') . '</span></a>';
-    }
-    if ($links === []) {
-        $linksHtml = '<p class="text-center text-sm" style="color:#94A3B8">Chưa có liên kết nào.</p>';
-    }
-
-    $csrf = csrfToken();
-    $year = date('Y');
-    $tint = $color . '0d';
-    $icCheckBig = icon('check', 'h-5 w-5', 'none');
-
-    $body = <<<HTML
-<div class="min-h-screen" style="background:linear-gradient(180deg,{$tint},#F7F8FA 320px)">
-  <div class="mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
-    {$avatarHtml}
-    <h1 class="mt-4 flex items-center gap-1.5 text-lg font-bold" style="color:#111827">{$name} {$verifiedBadge}</h1>
-    <p class="mt-1 text-sm font-medium" style="color:{$color}">{$jobTitle}</p>
-    <p class="mt-2 max-w-xs text-center text-sm leading-relaxed" style="color:#64748B">{$bio}</p>
-
-    <div class="mt-5 flex w-full gap-2">
-      {$quickButtons}
-    </div>
-
-    <div class="mt-6 flex w-full flex-col gap-2.5">
-      {$linksHtml}
-    </div>
-
-    <div class="mt-8 w-full rounded-xl bg-white p-5" style="border:1px solid #E5E7EB">
-      <h2 class="text-sm font-bold" style="color:#111827">Đăng ký tư vấn miễn phí</h2>
-      <form id="leadForm" class="mt-4 flex flex-col gap-3">
-        <input type="hidden" name="csrf" value="{$csrf}">
-        <input required name="name" placeholder="Họ và tên *" class="rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#5B4CF6]" style="border:1px solid #E5E7EB;color:#111827">
-        <input required name="phone" placeholder="Số điện thoại *" class="rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#5B4CF6]" style="border:1px solid #E5E7EB;color:#111827">
-        <textarea name="note" placeholder="Ghi chú (không bắt buộc)" rows="2" class="rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#5B4CF6]" style="border:1px solid #E5E7EB;color:#111827"></textarea>
-        <button type="submit" id="leadSubmitBtn" class="rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style="background:{$color}">Gửi thông tin</button>
-      </form>
-      <div id="leadSuccess" class="hidden flex-col items-center py-4 text-center">
-        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">{$icCheckBig}</span>
-        <p class="mt-3 text-sm font-medium" style="color:#111827">Cảm ơn bạn! Thông tin đã được gửi thành công.</p>
-      </div>
-      <p id="leadError" class="mt-2 text-center text-xs text-red-600"></p>
-    </div>
-
-    <p class="mt-8 pb-10 text-[11px]" style="color:#94A3B8">© {$year} VN BioLink Hub</p>
-  </div>
-</div>
-
-<script>
+    return <<<'JS'
 document.querySelectorAll('.biolink-item').forEach(function (el) {
   el.addEventListener('click', function () {
     var id = el.getAttribute('data-link-id');
@@ -679,40 +623,84 @@ document.querySelectorAll('.biolink-item').forEach(function (el) {
   });
 });
 var leadForm = document.getElementById('leadForm');
-leadForm.addEventListener('submit', async function (ev) {
-  ev.preventDefault();
-  var form = ev.currentTarget;
-  var btn = document.getElementById('leadSubmitBtn');
-  var errEl = document.getElementById('leadError');
-  btn.disabled = true;
-  btn.textContent = 'Đang gửi...';
-  errEl.textContent = '';
-  try {
-    var res = await fetch('/api/lead', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name: form.name.value, phone: form.phone.value, note: form.note.value, csrf: form.csrf.value }),
-    });
-    var data = await res.json();
-    if (data.ok) {
-      form.classList.add('hidden');
-      document.getElementById('leadSuccess').classList.remove('hidden');
-      document.getElementById('leadSuccess').classList.add('flex');
-    } else {
-      errEl.textContent = data.error || 'Có lỗi xảy ra, vui lòng thử lại.';
+if (leadForm) {
+  leadForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var form = ev.currentTarget;
+    var btn = document.getElementById('leadSubmitBtn');
+    var errEl = document.getElementById('leadError');
+    btn.disabled = true;
+    btn.textContent = 'Đang gửi...';
+    if (errEl) { errEl.textContent = ''; }
+    try {
+      var res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name: form.name.value, phone: form.phone.value, note: form.note.value, csrf: form.csrf.value }),
+      });
+      var data = await res.json();
+      if (data.ok) {
+        form.classList.add('hidden');
+        var successEl = document.getElementById('leadSuccess');
+        if (successEl) { successEl.classList.remove('hidden'); successEl.classList.add('flex'); }
+      } else {
+        if (errEl) { errEl.textContent = data.error || 'Có lỗi xảy ra, vui lòng thử lại.'; }
+        btn.disabled = false;
+        btn.textContent = 'Gửi thông tin';
+      }
+    } catch (e) {
+      if (errEl) { errEl.textContent = 'Không kết nối được máy chủ.'; }
       btn.disabled = false;
       btn.textContent = 'Gửi thông tin';
     }
-  } catch (e) {
-    errEl.textContent = 'Không kết nối được máy chủ.';
-    btn.disabled = false;
-    btn.textContent = 'Gửi thông tin';
-  }
-});
-</script>
-HTML;
+  });
+}
+JS;
+}
 
-    return layoutPublic($name . ' — VN BioLink Hub', $body);
+/** slug hợp lệ (whitelist) + file template thực sự tồn tại — không thì fallback 'minimal'. */
+function normalizeTemplateSlug($slug): string
+{
+    $slug = is_string($slug) ? $slug : 'minimal';
+    if (!array_key_exists($slug, BIO_TEMPLATES)) {
+        return 'minimal';
+    }
+    if (!is_file(__DIR__ . '/templates/' . $slug . '.php')) {
+        return 'minimal';
+    }
+    return $slug;
+}
+
+/**
+ * Dispatcher render Public Bio — KHÔNG chứa layout/style riêng của template.
+ * Include đúng file templates/{slug}.php, truyền sẵn $profile/$links/$themeColor/$csrf
+ * đã escape/tính toán sẵn; các hàm helper (icon(), LINK_TYPES, linkHref(), zaloUrl()...)
+ * vẫn dùng chung như cũ — template chỉ quyết định LAYOUT + STYLE, không tự query DB.
+ */
+function renderBioPage(array $user, array $links, ?string $forceSlug = null): string
+{
+    $slug        = normalizeTemplateSlug($forceSlug ?? ($user['template_slug'] ?? 'minimal'));
+    $themeColor  = validThemeColor($user['theme_color']);
+    $displayName = e($user['display_name']);
+
+    $profile = [
+        'name'         => $displayName,
+        'jobTitle'     => e($user['job_title'] ?? ''),
+        'bio'          => nl2br(e($user['bio_text'] ?? '')),
+        'avatarPath'   => $user['avatar_path'] ?? null,
+        'initial'      => e(mb_substr($user['display_name'] ?: 'B', 0, 1)),
+        'hotlinePhone' => $user['hotline_phone'] ?? null,
+        'zaloPhone'    => $user['zalo_phone'] ?? null,
+    ];
+
+    $csrf = csrfToken();
+
+    ob_start();
+    include __DIR__ . '/templates/' . $slug . '.php';
+    $content = (string) ob_get_clean();
+
+    $full = $content . '<script>' . bioPageScript() . '</script>';
+    return layoutPublic($displayName . ' — VN BioLink Hub', $full);
 }
 
 // ==========================================================================
@@ -1821,6 +1809,191 @@ HTML;
 }
 
 // ==========================================================================
+// VIEW: GIAO DIỆN (chọn template Bio Link — preview + áp dụng bằng data thật)
+// ==========================================================================
+
+function viewTemplates(array $user): string
+{
+    $currentSlug = normalizeTemplateSlug($user['template_slug'] ?? 'minimal');
+    $csrf = csrfToken();
+
+    $cards = '';
+    foreach (BIO_TEMPLATES as $slug => $def) {
+        $isActive = $slug === $currentSlug;
+        $badge = $isActive
+            ? '<span class="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white" style="background:#5B4CF6">' . icon('check', 'h-3 w-3', 'none') . 'Đang sử dụng</span>'
+            : '';
+        $applyBtnClass = $isActive
+            ? 'flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center cursor-default'
+            : 'applyBtn flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center text-white transition hover:opacity-90';
+        $applyBtnStyle = $isActive ? 'background:#F1F5F9;color:#94A3B8' : 'background:#5B4CF6';
+        $applyBtnLabel = $isActive ? 'Đang dùng' : 'Áp dụng';
+        $applyBtnAttrs = $isActive ? 'disabled' : 'data-slug="' . e($slug) . '" data-label="' . e($def['label']) . '"';
+
+        $cards .= <<<HTML
+<div class="templateCard overflow-hidden rounded-xl bg-white" data-slug="{$slug}" style="border:1px solid #E5E7EB">
+  <div class="relative overflow-hidden" style="height:220px;background:#F1F5F9">
+    {$badge}
+    <iframe src="/admin/templates/preview/{$slug}" style="width:375px;height:820px;border:0;transform:scale(0.42);transform-origin:top left;pointer-events:none" loading="lazy" tabindex="-1"></iframe>
+  </div>
+  <div class="p-4">
+    <p class="text-sm font-bold" style="color:#111827">{$def['label']}</p>
+    <p class="mt-0.5 text-xs" style="color:#64748B">{$def['desc']}</p>
+    <div class="mt-3 flex gap-2">
+      <button type="button" class="previewBtn flex-1 rounded-lg px-3 py-2 text-xs font-medium transition hover:bg-gray-50" style="border:1px solid #E5E7EB;color:#111827" data-slug="{$slug}" data-label="{$def['label']}">Xem trước</button>
+      <button type="button" class="{$applyBtnClass}" style="{$applyBtnStyle}" {$applyBtnAttrs}>{$applyBtnLabel}</button>
+    </div>
+  </div>
+</div>
+HTML;
+    }
+
+    $icCheckSmallJs = addslashes(icon('check', 'h-3 w-3', 'none'));
+    $icMonitor = icon('monitor', 'h-4 w-4', 'none');
+    $icSmartphone = icon('smartphone', 'h-4 w-4', 'none');
+    $icX = icon('x', 'h-5 w-5', 'none');
+
+    $body = <<<HTML
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+  {$cards}
+</div>
+
+<div id="templatePreviewModal" class="fixed inset-0 z-[65] hidden items-center justify-center bg-black/50 p-4">
+  <div class="flex max-h-[90vh] w-full flex-col rounded-xl bg-white" style="max-width:420px">
+    <div class="flex items-center justify-between border-b px-4 py-3" style="border-color:#E5E7EB">
+      <p id="previewModalTitle" class="text-sm font-bold" style="color:#111827">Xem trước</p>
+      <button id="closePreviewModal" type="button" class="rounded-lg p-1 hover:bg-gray-100" style="color:#64748B">{$icX}</button>
+    </div>
+    <div class="flex items-center justify-center gap-1 border-b p-2" style="border-color:#E5E7EB">
+      <button type="button" id="previewDesktopBtn" class="deviceBtn inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium" style="background:#F7F8FA;color:#111827">{$icMonitor}Desktop</button>
+      <button type="button" id="previewMobileBtn" class="deviceBtn inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium" style="color:#64748B">{$icSmartphone}Mobile</button>
+    </div>
+    <div class="flex flex-1 justify-center overflow-y-auto bg-gray-50 p-4">
+      <iframe id="previewModalFrame" src="" style="width:375px;height:640px;border:0;border-radius:8px;background:white;transition:width .2s"></iframe>
+    </div>
+    <div class="border-t p-3" style="border-color:#E5E7EB">
+      <button type="button" id="applyFromPreviewBtn" class="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style="background:#5B4CF6">Áp dụng template</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var csrfToken = document.body.dataset.csrf;
+var previewModal = document.getElementById('templatePreviewModal');
+var previewFrame = document.getElementById('previewModalFrame');
+var applyFromPreviewBtn = document.getElementById('applyFromPreviewBtn');
+var currentPreviewSlug = null;
+
+function setDeviceMode(mode) {
+  var desktopBtn = document.getElementById('previewDesktopBtn');
+  var mobileBtn = document.getElementById('previewMobileBtn');
+  if (mode === 'desktop') {
+    previewFrame.style.width = '420px';
+    desktopBtn.style.background = '#F7F8FA'; desktopBtn.style.color = '#111827';
+    mobileBtn.style.background = 'transparent'; mobileBtn.style.color = '#64748B';
+  } else {
+    previewFrame.style.width = '320px';
+    mobileBtn.style.background = '#F7F8FA'; mobileBtn.style.color = '#111827';
+    desktopBtn.style.background = 'transparent'; desktopBtn.style.color = '#64748B';
+  }
+}
+document.getElementById('previewDesktopBtn').addEventListener('click', function () { setDeviceMode('desktop'); });
+document.getElementById('previewMobileBtn').addEventListener('click', function () { setDeviceMode('mobile'); });
+
+function openPreview(slug, label) {
+  currentPreviewSlug = slug;
+  document.getElementById('previewModalTitle').textContent = 'Xem trước — ' + label;
+  previewFrame.src = '/admin/templates/preview/' + slug;
+  setDeviceMode('desktop');
+  previewModal.classList.remove('hidden');
+  previewModal.classList.add('flex');
+}
+document.querySelectorAll('.previewBtn').forEach(function (btn) {
+  btn.addEventListener('click', function () { openPreview(btn.dataset.slug, btn.dataset.label); });
+});
+document.getElementById('closePreviewModal').addEventListener('click', function () {
+  previewModal.classList.add('hidden');
+  previewModal.classList.remove('flex');
+  previewFrame.src = '';
+});
+
+function applyTemplate(slug, label) {
+  openConfirm({
+    title: 'Đổi giao diện?',
+    body: 'Bạn có chắc muốn sử dụng giao diện "' + label + '" cho trang Bio Link? Thông tin và dữ liệu hiện tại của bạn sẽ không bị thay đổi.',
+    okLabel: 'Áp dụng',
+    danger: false,
+    onConfirm: function () {
+      var btn = document.querySelector('.applyBtn[data-slug="' + slug + '"]') || applyFromPreviewBtn;
+      var originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Đang cập nhật...';
+      fetch('/admin/templates/apply', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ csrf: csrfToken, slug: slug }),
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        if (data.ok) {
+          showToast('✓ Đã đổi giao diện thành công.');
+          document.querySelectorAll('.templateCard').forEach(function (card) {
+            var isNow = card.dataset.slug === slug;
+            var cardBtn = card.querySelector('.applyBtn, button[disabled]');
+            var existingBadge = card.querySelector('span[style*="Đang sử dụng"], .templateBadge');
+            var imgWrap = card.querySelector('div[style*="height:220px"]');
+            var oldBadge = imgWrap ? imgWrap.querySelector('span') : null;
+            if (oldBadge) { oldBadge.remove(); }
+            if (isNow && imgWrap) {
+              var b = document.createElement('span');
+              b.className = 'templateBadge absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white';
+              b.style.background = '#5B4CF6';
+              b.innerHTML = '{$icCheckSmallJs}Đang sử dụng';
+              imgWrap.appendChild(b);
+            }
+            if (cardBtn) {
+              if (isNow) {
+                cardBtn.outerHTML = '<button type="button" class="flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center cursor-default" style="background:#F1F5F9;color:#94A3B8" disabled>Đang dùng</button>';
+              } else if (cardBtn.tagName === 'BUTTON' && cardBtn.disabled) {
+                cardBtn.outerHTML = '<button type="button" class="applyBtn flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center text-white transition hover:opacity-90" style="background:#5B4CF6" data-slug="' + card.dataset.slug + '" data-label="' + card.querySelector('p.text-sm').textContent + '">Áp dụng</button>';
+              }
+            }
+          });
+          bindApplyButtons();
+          previewModal.classList.add('hidden');
+          previewModal.classList.remove('flex');
+        } else {
+          showToast(data.error || 'Có lỗi xảy ra.', 'error');
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }).catch(function () {
+        showToast('Không kết nối được máy chủ.', 'error');
+        btn.disabled = false;
+        btn.textContent = originalText;
+      });
+    },
+  });
+}
+
+function bindApplyButtons() {
+  document.querySelectorAll('.applyBtn').forEach(function (btn) {
+    btn.onclick = function () { applyTemplate(btn.dataset.slug, btn.dataset.label); };
+  });
+}
+bindApplyButtons();
+
+applyFromPreviewBtn.addEventListener('click', function () {
+  if (currentPreviewSlug) {
+    var label = document.getElementById('previewModalTitle').textContent.replace('Xem trước — ', '');
+    applyTemplate(currentPreviewSlug, label);
+  }
+});
+</script>
+HTML;
+
+    $header = pageHeader('Giao diện', 'Chọn giao diện phù hợp với phong cách của bạn.');
+    return layoutAdmin('Giao diện — Admin', 'templates', $header . $body, $user);
+}
+
+// ==========================================================================
 // ANALYTICS (dữ liệu thật từ link_clicks/leads/links — không có số minh hoạ)
 // ==========================================================================
 
@@ -1993,7 +2166,7 @@ function ctrlBio()
     }
     $stmt = db()->prepare('SELECT * FROM links WHERE user_id = ? AND is_active = 1 ORDER BY position ASC, id ASC');
     $stmt->execute([$user['id']]);
-    echo viewBio($user, $stmt->fetchAll());
+    echo renderBioPage($user, $stmt->fetchAll());
     exit;
 }
 
@@ -2357,6 +2530,39 @@ function ctrlStatistics()
     exit;
 }
 
+function ctrlTemplatesShow()
+{
+    $user = requireLogin();
+    echo viewTemplates($user);
+    exit;
+}
+
+/** Xem trước 1 template với DATA THẬT của user hiện tại — KHÔNG lưu vào DB. */
+function ctrlTemplatePreview(string $slug)
+{
+    $user = requireLogin();
+    $slug = normalizeTemplateSlug($slug);
+    $stmt = db()->prepare('SELECT * FROM links WHERE user_id = ? AND is_active = 1 ORDER BY position ASC, id ASC');
+    $stmt->execute([$user['id']]);
+    echo renderBioPage($user, $stmt->fetchAll(), $slug);
+    exit;
+}
+
+function ctrlTemplateApply()
+{
+    $user = requireLogin();
+    $input = jsonInput();
+    if (!csrfCheck($input['csrf'] ?? null)) {
+        jsonResponse(['ok' => false, 'error' => 'Phiên làm việc hết hạn, vui lòng tải lại trang.'], 419);
+    }
+    $slug = (string) ($input['slug'] ?? '');
+    if (!array_key_exists($slug, BIO_TEMPLATES)) {
+        jsonResponse(['ok' => false, 'error' => 'Template không hợp lệ.'], 400);
+    }
+    db()->prepare('UPDATE users SET template_slug = ? WHERE id = ?')->execute([$slug, $user['id']]);
+    jsonResponse(['ok' => true, 'slug' => $slug]);
+}
+
 function ctrlSettingsShow()
 {
     $user = requireLogin();
@@ -2489,6 +2695,16 @@ try {
 
     if ($method === 'GET' && $path === '/admin/statistics') {
         ctrlStatistics();
+    }
+
+    if ($method === 'GET' && $path === '/admin/templates') {
+        ctrlTemplatesShow();
+    }
+    if ($method === 'GET' && preg_match('#^/admin/templates/preview/([a-z]+)$#', $path, $m)) {
+        ctrlTemplatePreview($m[1]);
+    }
+    if ($method === 'POST' && $path === '/admin/templates/apply') {
+        ctrlTemplateApply();
     }
 
     if ($method === 'GET' && $path === '/admin/settings') {

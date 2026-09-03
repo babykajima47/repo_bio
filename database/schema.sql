@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     bio_text       TEXT             NULL,
     avatar_path    VARCHAR(255)     NULL,
     theme_color    VARCHAR(7)       NOT NULL DEFAULT '#6C4EF6',
+    template_slug  VARCHAR(50)      NOT NULL DEFAULT 'minimal',
     zalo_phone     VARCHAR(20)      NULL,
     hotline_phone  VARCHAR(20)      NULL,
     created_at     DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,

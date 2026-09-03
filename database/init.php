@@ -84,6 +84,7 @@ addColumnIfMissing($pdo, 'leads', 'user_agent', "user_agent VARCHAR(255) NULL AF
 addColumnIfMissing($pdo, 'leads', 'source_path', "source_path VARCHAR(255) NULL AFTER user_agent");
 addColumnIfMissing($pdo, 'links', 'color', "color VARCHAR(7) NULL AFTER url");
 addColumnIfMissing($pdo, 'links', 'open_new_tab', "open_new_tab TINYINT(1) NOT NULL DEFAULT 1 AFTER color");
+addColumnIfMissing($pdo, 'users', 'template_slug', "template_slug VARCHAR(50) NOT NULL DEFAULT 'minimal' AFTER theme_color");
 
 echo "[init] Đồng bộ tài khoản quản trị từ ADMIN_EMAIL/ADMIN_PASSWORD...\n";
 
