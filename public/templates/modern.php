@@ -2,8 +2,8 @@
 /** Template: Ultra Modern (slug: modern) — mono đen/trắng/xám, chỉ 1 màu nhấn duy nhất, cạnh sắc. */
 
 $avatarHtml = $profile['avatarPath']
-    ? '<img src="' . e($profile['avatarPath']) . '" alt="' . $profile['name'] . '" class="h-24 w-24 object-cover" style="border-radius:4px">'
-    : '<div class="flex h-24 w-24 items-center justify-center text-3xl font-bold text-white" style="border-radius:4px;background:#111827">' . $profile['initial'] . '</div>';
+    ? '<img src="' . e($profile['avatarPath']) . '" alt="' . $profile['name'] . '" class="h-24 w-24 object-cover" style="border-radius:4px;border:3px solid white;box-shadow:0 4px 20px rgba(0,0,0,.25)">'
+    : '<div class="flex h-24 w-24 items-center justify-center text-3xl font-bold text-white" style="border-radius:4px;background:rgba(255,255,255,.18);border:3px solid white;box-shadow:0 4px 20px rgba(0,0,0,.25)">' . $profile['initial'] . '</div>';
 
 $verifiedBadge = '<span class="inline-flex h-[16px] w-[16px] items-center justify-center" style="border-radius:3px;background:' . e($themeColor) . '">' . icon('check', 'h-2 w-2', 'none') . '</span>';
 $verifiedBadge = str_replace('stroke="currentColor" stroke-width="1.8"', 'stroke="white" stroke-width="3.5"', $verifiedBadge);
@@ -38,12 +38,13 @@ if ($links === []) {
 $year = date('Y');
 $icCheckBig = icon('check', 'h-5 w-5', 'none');
 ?>
-<div class="min-h-screen bg-white">
-  <div class="mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
+<div class="relative min-h-screen overflow-hidden" style="background:linear-gradient(160deg,#F97316,#EC4899 45%,#4C1D95 100%)">
+  <div class="pointer-events-none absolute inset-0" style="background:linear-gradient(180deg,transparent 45%,#FFFFFF 82%)"></div>
+  <div class="relative z-10 mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
     <?= $avatarHtml ?>
-    <h1 class="mt-4 flex items-center gap-1.5 text-lg font-extrabold tracking-tight" style="color:#111827"><?= $profile['name'] ?> <?= $verifiedBadge ?></h1>
-    <p class="mt-1 text-sm font-semibold" style="color:<?= e($themeColor) ?>"><?= $profile['jobTitle'] ?></p>
-    <p class="mt-2 max-w-xs text-center text-sm leading-relaxed" style="color:#6B7280"><?= $profile['bio'] ?></p>
+    <h1 class="mt-4 flex items-center gap-1.5 text-lg font-extrabold tracking-tight text-white" style="text-shadow:0 1px 12px rgba(0,0,0,.25)"><?= $profile['name'] ?> <?= $verifiedBadge ?></h1>
+    <p class="mt-1 text-sm font-semibold text-white" style="opacity:.92"><?= $profile['jobTitle'] ?></p>
+    <p class="mt-2 max-w-xs text-center text-sm leading-relaxed text-white" style="opacity:.85"><?= $profile['bio'] ?></p>
 
     <div class="mt-5 flex w-full gap-2">
       <?= $quickButtons ?>

@@ -40,11 +40,15 @@ if ($links === []) {
 }
 
 $year = date('Y');
-$tint = $themeColor . '0d';
 $icCheckBig = icon('check', 'h-5 w-5', 'none');
 ?>
-<div class="min-h-screen" style="background:linear-gradient(180deg,<?= $tint ?>,#F7F8FA 320px)">
-  <div class="mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
+<div class="relative min-h-screen overflow-hidden" style="background:#F7F8FA">
+  <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    <div class="absolute rounded-full" style="width:280px;height:280px;top:-90px;left:-90px;background:<?= e($themeColor) ?>;opacity:.14;filter:blur(46px)"></div>
+    <div class="absolute rounded-full" style="width:220px;height:220px;top:140px;right:-70px;background:<?= e($themeColor) ?>;opacity:.10;filter:blur(46px)"></div>
+    <div class="absolute rounded-full" style="width:200px;height:200px;bottom:80px;left:-60px;background:#38BDF8;opacity:.12;filter:blur(46px)"></div>
+  </div>
+  <div class="relative z-10 mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
     <?= $avatarHtml ?>
     <h1 class="mt-4 flex items-center gap-1.5 text-lg font-bold" style="color:#111827"><?= $profile['name'] ?> <?= $verifiedBadge ?></h1>
     <p class="mt-1 text-sm font-medium" style="color:<?= e($themeColor) ?>"><?= $profile['jobTitle'] ?></p>

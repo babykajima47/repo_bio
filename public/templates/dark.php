@@ -38,8 +38,13 @@ if ($links === []) {
 $year = date('Y');
 $icCheckBig = icon('check', 'h-5 w-5', 'none');
 ?>
-<div class="min-h-screen" style="background:radial-gradient(120% 60% at 50% 0%,<?= e($themeColor) ?>22,#0B1120 55%)">
-  <div class="mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
+<div class="relative min-h-screen overflow-hidden" style="background:radial-gradient(120% 60% at 50% 0%,<?= e($themeColor) ?>22,#0B1120 55%)">
+  <svg viewBox="0 0 480 220" preserveAspectRatio="none" class="pointer-events-none absolute left-0 top-0 w-full" style="height:240px">
+    <polygon points="0,220 0,130 70,70 150,120 230,45 310,105 390,75 480,140 480,220" fill="<?= e($themeColor) ?>" opacity="0.18"/>
+    <polygon points="0,220 0,160 110,95 210,145 320,85 420,135 480,110 480,220" fill="#1E293B" opacity="0.85"/>
+    <polygon points="0,220 0,185 130,140 250,175 370,125 480,170 480,220" fill="#0B1120"/>
+  </svg>
+  <div class="relative z-10 mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
     <?= $avatarHtml ?>
     <h1 class="mt-4 flex items-center gap-1.5 text-lg font-bold text-white"><?= $profile['name'] ?> <?= $verifiedBadge ?></h1>
     <p class="mt-1 text-sm font-medium" style="color:<?= e($themeColor) ?>"><?= $profile['jobTitle'] ?></p>

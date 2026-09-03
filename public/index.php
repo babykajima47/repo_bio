@@ -2541,6 +2541,10 @@ function ctrlTemplatesShow()
 function ctrlTemplatePreview(string $slug)
 {
     $user = requireLogin();
+    // Route này PHẢI nhúng được trong <iframe> ở chính trang /admin/templates (cùng origin) —
+    // ghi đè X-Frame-Options: DENY gửi lúc bootstrap (chỉ đổi cho route này, các route khác
+    // vẫn DENY như cũ để chống clickjacking bình thường).
+    header('X-Frame-Options: SAMEORIGIN');
     $slug = normalizeTemplateSlug($slug);
     $stmt = db()->prepare('SELECT * FROM links WHERE user_id = ? AND is_active = 1 ORDER BY position ASC, id ASC');
     $stmt->execute([$user['id']]);

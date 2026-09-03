@@ -38,8 +38,12 @@ if ($links === []) {
 $year = date('Y');
 $icCheckBig = icon('check', 'h-5 w-5', 'none');
 ?>
-<div class="min-h-screen bg-white">
-  <div class="mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
+<div class="relative min-h-screen overflow-hidden bg-white">
+  <svg viewBox="0 0 480 180" preserveAspectRatio="none" class="pointer-events-none absolute left-0 top-0 w-full" style="height:170px">
+    <polygon points="0,180 0,110 90,60 190,105 290,45 380,95 480,70 480,180" fill="#CBD5E1" opacity="0.5"/>
+    <polygon points="0,180 0,140 120,95 240,130 360,85 480,120 480,180" fill="#94A3B8" opacity="0.35"/>
+  </svg>
+  <div class="relative z-10 mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
     <?= $avatarHtml ?>
     <h1 class="mt-4 flex items-center gap-1.5 text-lg font-bold" style="color:#1E293B"><?= $profile['name'] ?> <?= $verifiedBadge ?></h1>
     <p class="mt-1 text-sm font-medium" style="color:#64748B"><?= $profile['jobTitle'] ?></p>

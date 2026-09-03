@@ -38,8 +38,11 @@ if ($links === []) {
 $year = date('Y');
 $icCheckBig = icon('check', 'h-5 w-5', 'none');
 ?>
-<div class="min-h-screen bg-[#FAFAF9]">
-  <div class="mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
+<div class="relative min-h-screen overflow-hidden bg-[#FAFAF9]">
+  <div class="pointer-events-none absolute" style="width:340px;height:180px;top:-40px;left:50%;transform:translateX(-50%) rotate(-4deg);background:<?= e($themeColor) ?>;opacity:.18"></div>
+  <div class="pointer-events-none absolute rounded-full" style="width:14px;height:14px;top:60px;right:14%;background:#111827"></div>
+  <div class="pointer-events-none absolute rounded-full" style="width:10px;height:10px;top:180px;left:10%;background:<?= e($themeColor) ?>"></div>
+  <div class="relative z-10 mx-auto flex w-full flex-col items-center px-5 pt-14" style="max-width:480px">
     <?= $avatarHtml ?>
     <h1 class="mt-5 flex items-center gap-1.5 text-xl font-black tracking-tight" style="color:#111827"><?= $profile['name'] ?> <?= $verifiedBadge ?></h1>
     <p class="mt-1 inline-block rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white" style="background:<?= e($themeColor) ?>"><?= $profile['jobTitle'] ?></p>
