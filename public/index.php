@@ -64,17 +64,19 @@ const LEAD_STATUS = [
 ];
 
 // Whitelist slug template Bio Link — validate cả khi lưu (POST) lẫn khi render (fallback minimal).
+// 'category' + 'tags' chỉ dùng để hiển thị/lọc ở trang Giao diện (JS thuần) —
+// KHÔNG ảnh hưởng whitelist lưu template_slug (vẫn check bằng array_key_exists).
 const BIO_TEMPLATES = [
-    'minimal'   => ['label' => 'Minimal Light',       'desc' => 'Sáng · Tối giản · Tinh tế'],
-    'dark'      => ['label' => 'Dark Pro',            'desc' => 'Dark · Sang trọng · Chuyên nghiệp'],
-    'gradient'  => ['label' => 'Gradient Modern',     'desc' => 'Gradient nhẹ · Trẻ trung · Hiện đại'],
-    'nature'    => ['label' => 'Nature Green',        'desc' => 'Xanh lá · Thiên nhiên · Organic'],
-    'creative'  => ['label' => 'Creative Portfolio',  'desc' => 'Cá tính · Sáng tạo · Nổi bật'],
-    'corporate' => ['label' => 'Business Corporate',  'desc' => 'Doanh nghiệp · Chuyên nghiệp · Nghiêm túc'],
-    'fashion'   => ['label' => 'Fashion Lifestyle',   'desc' => 'Thời trang · Lifestyle · Editorial'],
-    'tech'      => ['label' => 'Tech Neon',           'desc' => 'Công nghệ · Dark · Neon'],
-    'elegant'   => ['label' => 'Elegant Classic',     'desc' => 'Thanh lịch · Cao cấp · Tối giản'],
-    'modern'    => ['label' => 'Ultra Modern',        'desc' => 'Modern · Monochrome · High-end'],
+    'minimal'   => ['label' => 'Minimal Light',       'desc' => 'Sáng · Tối giản · Tinh tế',              'category' => 'toigian',      'tags' => ['Personal', 'Creator']],
+    'dark'      => ['label' => 'Dark Pro',            'desc' => 'Dark · Sang trọng · Chuyên nghiệp',      'category' => 'dark',         'tags' => ['Personal', 'Professional']],
+    'gradient'  => ['label' => 'Gradient Modern',     'desc' => 'Gradient nhẹ · Trẻ trung · Hiện đại',    'category' => 'sangtao',      'tags' => ['Creator', 'Trendy']],
+    'nature'    => ['label' => 'Nature Green',        'desc' => 'Xanh lá · Thiên nhiên · Organic',        'category' => 'lifestyle',    'tags' => ['Lifestyle', 'Wellness']],
+    'creative'  => ['label' => 'Creative Portfolio',  'desc' => 'Cá tính · Sáng tạo · Nổi bật',           'category' => 'sangtao',      'tags' => ['Portfolio', 'Creative']],
+    'corporate' => ['label' => 'Business Corporate',  'desc' => 'Doanh nghiệp · Chuyên nghiệp · Nghiêm túc', 'category' => 'chuyennghiep', 'tags' => ['Business', 'Professional']],
+    'fashion'   => ['label' => 'Fashion Lifestyle',   'desc' => 'Thời trang · Lifestyle · Editorial',     'category' => 'lifestyle',    'tags' => ['Fashion', 'Lifestyle']],
+    'tech'      => ['label' => 'Tech Neon',           'desc' => 'Công nghệ · Dark · Neon',                'category' => 'dark',         'tags' => ['Tech', 'Futuristic']],
+    'elegant'   => ['label' => 'Elegant Classic',     'desc' => 'Thanh lịch · Cao cấp · Tối giản',        'category' => 'chuyennghiep', 'tags' => ['Luxury', 'Classic']],
+    'modern'    => ['label' => 'Ultra Modern',        'desc' => 'Modern · Monochrome · High-end',         'category' => 'sangtao',      'tags' => ['Modern', 'Bold']],
 ];
 
 // ==========================================================================
@@ -1814,34 +1816,77 @@ HTML;
 
 function viewTemplates(array $user): string
 {
-    $currentSlug = normalizeTemplateSlug($user['template_slug'] ?? 'minimal');
+    $currentSlug  = normalizeTemplateSlug($user['template_slug'] ?? 'minimal');
+    $currentLabel = e(BIO_TEMPLATES[$currentSlug]['label']);
     $csrf = csrfToken();
+
+    // Kích thước "phone frame" quy đổi 1 lần — card nhỏ, modal lớn hơn — cùng
+    // 1 iframe gốc 375x900 (khớp thật với max-width:480px của mọi template),
+    // chỉ đổi scale để không lệch tỉ lệ giữa các kích cỡ hiển thị.
+    $frameW = 375; $frameH = 900;
+    $cardScale = round(210 / $frameW, 4);
+
+    $icPreviewLabel = 'Xem trước';
+
+    $filters = [
+        'all'          => 'Tất cả',
+        'toigian'      => 'Tối giản',
+        'chuyennghiep' => 'Chuyên nghiệp',
+        'sangtao'      => 'Sáng tạo',
+        'dark'         => 'Dark',
+        'lifestyle'    => 'Lifestyle',
+    ];
+    $filterChips = '';
+    foreach ($filters as $key => $label) {
+        $isAll = $key === 'all';
+        $filterChips .= '<button type="button" class="filterChip' . ($isAll ? ' filterChipActive' : '') . ' rounded-full px-3.5 py-1.5 text-xs font-medium transition" data-filter="' . $key . '">' . e($label) . '</button>';
+    }
 
     $cards = '';
     foreach (BIO_TEMPLATES as $slug => $def) {
         $isActive = $slug === $currentSlug;
+        $label    = e($def['label']);
+        $desc     = e($def['desc']);
+        $tag1     = e($def['tags'][0]);
+        $tag2     = e($def['tags'][1]);
+        $searchBlob = e(mb_strtolower($def['label'] . ' ' . $def['desc'] . ' ' . $def['tags'][0] . ' ' . $def['tags'][1]));
+
         $badge = $isActive
-            ? '<span class="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white" style="background:#5B4CF6">' . icon('check', 'h-3 w-3', 'none') . 'Đang sử dụng</span>'
+            ? '<span class="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm" style="background:#5B4CF6">' . icon('check', 'h-3 w-3', 'none') . 'Đang sử dụng</span>'
             : '';
-        $applyBtnClass = $isActive
-            ? 'flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center cursor-default'
-            : 'applyBtn flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center text-white transition hover:opacity-90';
-        $applyBtnStyle = $isActive ? 'background:#F1F5F9;color:#94A3B8' : 'background:#5B4CF6';
-        $applyBtnLabel = $isActive ? 'Đang dùng' : 'Áp dụng';
-        $applyBtnAttrs = $isActive ? 'disabled' : 'data-slug="' . e($slug) . '" data-label="' . e($def['label']) . '"';
+
+        $applyBtnHtml = $isActive
+            ? '<button type="button" class="flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center cursor-default" style="background:#F1F5F9;color:#94A3B8" disabled>Đang sử dụng</button>'
+            : '<button type="button" class="applyBtn flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center text-white transition hover:opacity-90" style="background:#5B4CF6" data-slug="' . e($slug) . '" data-label="' . $label . '">Áp dụng</button>';
+
+        $activeAttr    = $isActive ? 'true' : 'false';
+        $borderColor   = $isActive ? '#5B4CF6' : '#E5E7EB';
+        $category      = e($def['category']);
 
         $cards .= <<<HTML
-<div class="templateCard overflow-hidden rounded-xl bg-white" data-slug="{$slug}" style="border:1px solid #E5E7EB">
-  <div class="relative overflow-hidden" style="height:220px;background:#F1F5F9">
+<div class="templateCard group overflow-hidden rounded-xl bg-white" data-slug="{$slug}" data-category="{$category}" data-search="{$searchBlob}" data-active="{$activeAttr}" style="border:1.5px solid {$borderColor}">
+  <div class="previewZone relative flex items-center justify-center" style="height:360px;background:linear-gradient(180deg,#EEF1F6,#E2E8F0)">
     {$badge}
-    <iframe src="/admin/templates/preview/{$slug}" style="width:375px;height:820px;border:0;transform:scale(0.42);transform-origin:top left;pointer-events:none" loading="lazy" tabindex="-1"></iframe>
+    <div class="phoneFrame relative overflow-hidden rounded-[26px] bg-[#0B0F19] p-2 shadow-lg">
+      <div class="mx-auto mb-1 h-1 w-8 rounded-full bg-white/25"></div>
+      <div class="overflow-hidden rounded-[18px] bg-white" style="width:210px;height:322px">
+        <iframe src="/admin/templates/preview/{$slug}" style="width:{$frameW}px;height:{$frameH}px;border:0;transform:scale({$cardScale});transform-origin:top left" loading="lazy" tabindex="-1"></iframe>
+      </div>
+    </div>
+    <div class="hoverOverlay pointer-events-none absolute inset-0 flex items-center justify-center opacity-0">
+      <span class="rounded-full bg-white px-4 py-2 text-xs font-semibold shadow" style="color:#111827">{$icPreviewLabel}</span>
+    </div>
   </div>
-  <div class="p-4">
-    <p class="text-sm font-bold" style="color:#111827">{$def['label']}</p>
-    <p class="mt-0.5 text-xs" style="color:#64748B">{$def['desc']}</p>
+  <div class="p-4" style="border-top:1px solid #F1F5F9">
+    <p class="text-sm font-bold" style="color:#111827">{$label}</p>
+    <p class="mt-0.5 text-xs" style="color:#64748B">{$desc}</p>
+    <div class="mt-2 flex gap-1.5">
+      <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" style="background:#F1F5F9;color:#64748B">{$tag1}</span>
+      <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" style="background:#F1F5F9;color:#64748B">{$tag2}</span>
+    </div>
     <div class="mt-3 flex gap-2">
-      <button type="button" class="previewBtn flex-1 rounded-lg px-3 py-2 text-xs font-medium transition hover:bg-gray-50" style="border:1px solid #E5E7EB;color:#111827" data-slug="{$slug}" data-label="{$def['label']}">Xem trước</button>
-      <button type="button" class="{$applyBtnClass}" style="{$applyBtnStyle}" {$applyBtnAttrs}>{$applyBtnLabel}</button>
+      <button type="button" class="previewBtn flex-1 rounded-lg px-3 py-2 text-xs font-medium transition hover:bg-gray-50" style="border:1px solid #E5E7EB;color:#111827" data-slug="{$slug}" data-label="{$label}" data-desc="{$desc}" data-tags="{$tag1} · {$tag2}">Xem trước</button>
+      {$applyBtnHtml}
     </div>
   </div>
 </div>
@@ -1849,30 +1894,81 @@ HTML;
     }
 
     $icCheckSmallJs = addslashes(icon('check', 'h-3 w-3', 'none'));
-    $icMonitor = icon('monitor', 'h-4 w-4', 'none');
-    $icSmartphone = icon('smartphone', 'h-4 w-4', 'none');
-    $icX = icon('x', 'h-5 w-5', 'none');
+    $icMonitor    = icon('monitor', 'h-3.5 w-3.5', 'none');
+    $icSmartphone = icon('smartphone', 'h-3.5 w-3.5', 'none');
+    $icX          = icon('x', 'h-5 w-5', 'none');
+    $icSearch     = icon('search', 'h-4 w-4', 'none');
+    $icEye        = icon('eye', 'h-4 w-4', 'none');
 
-    $body = <<<HTML
-<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-  {$cards}
+    $header = <<<HTML
+<style>
+.templateCard { transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease; }
+.templateCard:hover { transform: translateY(-4px); border-color: #5B4CF6 !important; box-shadow: 0 10px 28px rgba(15,23,42,.10); }
+.templateCard .phoneFrame { transition: transform 220ms ease; }
+.templateCard:hover .phoneFrame { transform: scale(1.02); }
+.templateCard .hoverOverlay { transition: opacity 220ms ease, background 220ms ease; }
+.templateCard:hover .hoverOverlay { opacity: 1; background: rgba(15,23,42,.32); }
+.filterChip { background:#fff; color:#64748B; border:1px solid #E5E7EB; }
+.filterChip:hover { border-color:#CBD5E1; }
+.filterChipActive { background:#5B4CF6 !important; color:#fff !important; border-color:#5B4CF6 !important; }
+.deviceBtn { color:#64748B; }
+.deviceBtnActive { background:#fff; color:#111827; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+</style>
+
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="text-xl font-bold" style="color:#111827">Giao diện</h1>
+    <p class="mt-1 text-sm" style="color:#64748B">Chọn phong cách phù hợp với thương hiệu cá nhân của bạn.</p>
+  </div>
+  <a href="/" target="_blank" class="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition hover:bg-gray-50" style="border:1px solid #E5E7EB;color:#111827">{$icEye}Xem trang Bio Link</a>
 </div>
 
-<div id="templatePreviewModal" class="fixed inset-0 z-[65] hidden items-center justify-center bg-black/50 p-4">
-  <div class="flex max-h-[90vh] w-full flex-col rounded-xl bg-white" style="max-width:420px">
-    <div class="flex items-center justify-between border-b px-4 py-3" style="border-color:#E5E7EB">
-      <p id="previewModalTitle" class="text-sm font-bold" style="color:#111827">Xem trước</p>
-      <button id="closePreviewModal" type="button" class="rounded-lg p-1 hover:bg-gray-100" style="color:#64748B">{$icX}</button>
+<div class="mb-5 flex items-center justify-between gap-3 rounded-lg px-4 py-3" style="background:#F5F3FF;border:1px solid #E9E5FF">
+  <p class="text-sm" style="color:#111827">Bạn đang sử dụng <span class="font-semibold" style="color:#5B4CF6">{$currentLabel}</span> · Nội dung và dữ liệu của bạn luôn được giữ nguyên khi đổi giao diện.</p>
+</div>
+
+<div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+  <div class="flex flex-wrap gap-1.5">
+    {$filterChips}
+  </div>
+  <div class="flex items-center gap-2 rounded-lg px-3 py-2 lg:w-64" style="border:1px solid #E5E7EB;color:#94A3B8">
+    {$icSearch}<input id="templateSearch" type="text" placeholder="Tìm template..." class="w-full bg-transparent text-sm outline-none" style="color:#111827">
+  </div>
+</div>
+HTML;
+
+    $body = <<<HTML
+<div id="templateGrid" class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+  {$cards}
+</div>
+<p id="templateEmptyState" class="hidden py-16 text-center text-sm" style="color:#94A3B8">Không tìm thấy template phù hợp.</p>
+
+<div id="templatePreviewModal" class="fixed inset-0 z-[65] hidden items-center justify-center bg-black/60 p-4">
+  <div class="grid w-full grid-cols-1 overflow-hidden rounded-2xl bg-white lg:grid-cols-[300px_1fr]" style="max-width:900px;max-height:92vh">
+    <div class="flex flex-col justify-between p-6" style="border-bottom:1px solid #E5E7EB">
+      <div>
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p id="previewModalTitle" class="text-lg font-bold" style="color:#111827">Minimal Light</p>
+            <p id="previewModalDesc" class="mt-1 text-sm" style="color:#64748B">Sáng · Tối giản · Tinh tế</p>
+          </div>
+          <button id="closePreviewModal" type="button" class="shrink-0 rounded-lg p-1 hover:bg-gray-100" style="color:#64748B">{$icX}</button>
+        </div>
+        <p id="previewModalTags" class="mt-2 text-xs font-medium" style="color:#5B4CF6"></p>
+        <div class="mt-5 inline-flex items-center gap-1 rounded-lg p-1" style="background:#F7F8FA">
+          <button type="button" id="previewDesktopBtn" class="deviceBtn deviceBtnActive inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium">{$icMonitor}Desktop</button>
+          <button type="button" id="previewMobileBtn" class="deviceBtn inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium">{$icSmartphone}Mobile</button>
+        </div>
+      </div>
+      <button type="button" id="applyFromPreviewBtn" class="mt-6 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style="background:#5B4CF6">Áp dụng template</button>
     </div>
-    <div class="flex items-center justify-center gap-1 border-b p-2" style="border-color:#E5E7EB">
-      <button type="button" id="previewDesktopBtn" class="deviceBtn inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium" style="background:#F7F8FA;color:#111827">{$icMonitor}Desktop</button>
-      <button type="button" id="previewMobileBtn" class="deviceBtn inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium" style="color:#64748B">{$icSmartphone}Mobile</button>
-    </div>
-    <div class="flex flex-1 justify-center overflow-y-auto bg-gray-50 p-4">
-      <iframe id="previewModalFrame" src="" style="width:375px;height:640px;border:0;border-radius:8px;background:white;transition:width .2s"></iframe>
-    </div>
-    <div class="border-t p-3" style="border-color:#E5E7EB">
-      <button type="button" id="applyFromPreviewBtn" class="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style="background:#5B4CF6">Áp dụng template</button>
+    <div class="flex items-center justify-center p-6" style="background:#EEF1F6;max-height:92vh;overflow:auto">
+      <div class="overflow-hidden rounded-[32px] bg-[#0B0F19] p-2.5 shadow-2xl">
+        <div class="mx-auto mb-1.5 h-1.5 w-10 rounded-full bg-white/25"></div>
+        <div id="previewPhoneScreen" class="overflow-hidden rounded-[22px] bg-white" style="width:280px;height:560px;transition:width 200ms ease,height 200ms ease">
+          <iframe id="previewModalFrame" src="" style="width:{$frameW}px;height:{$frameH}px;border:0;transition:transform 200ms ease"></iframe>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1881,36 +1977,60 @@ HTML;
 var csrfToken = document.body.dataset.csrf;
 var previewModal = document.getElementById('templatePreviewModal');
 var previewFrame = document.getElementById('previewModalFrame');
+var previewScreen = document.getElementById('previewPhoneScreen');
 var applyFromPreviewBtn = document.getElementById('applyFromPreviewBtn');
 var currentPreviewSlug = null;
+var FRAME_W = {$frameW};
+
+function applyPhoneSize(w, h) {
+  previewScreen.style.width = w + 'px';
+  previewScreen.style.height = h + 'px';
+  previewFrame.style.transform = 'scale(' + (w / FRAME_W) + ')';
+  previewFrame.style.transformOrigin = 'top left';
+}
 
 function setDeviceMode(mode) {
   var desktopBtn = document.getElementById('previewDesktopBtn');
   var mobileBtn = document.getElementById('previewMobileBtn');
   if (mode === 'desktop') {
-    previewFrame.style.width = '420px';
-    desktopBtn.style.background = '#F7F8FA'; desktopBtn.style.color = '#111827';
-    mobileBtn.style.background = 'transparent'; mobileBtn.style.color = '#64748B';
+    applyPhoneSize(280, 560);
+    desktopBtn.classList.add('deviceBtnActive'); mobileBtn.classList.remove('deviceBtnActive');
   } else {
-    previewFrame.style.width = '320px';
-    mobileBtn.style.background = '#F7F8FA'; mobileBtn.style.color = '#111827';
-    desktopBtn.style.background = 'transparent'; desktopBtn.style.color = '#64748B';
+    applyPhoneSize(230, 460);
+    mobileBtn.classList.add('deviceBtnActive'); desktopBtn.classList.remove('deviceBtnActive');
   }
 }
 document.getElementById('previewDesktopBtn').addEventListener('click', function () { setDeviceMode('desktop'); });
 document.getElementById('previewMobileBtn').addEventListener('click', function () { setDeviceMode('mobile'); });
 
-function openPreview(slug, label) {
+function openPreview(slug, label, desc, tags) {
   currentPreviewSlug = slug;
-  document.getElementById('previewModalTitle').textContent = 'Xem trước — ' + label;
+  document.getElementById('previewModalTitle').textContent = label;
+  document.getElementById('previewModalDesc').textContent = desc;
+  document.getElementById('previewModalTags').textContent = tags;
   previewFrame.src = '/admin/templates/preview/' + slug;
   setDeviceMode('desktop');
   previewModal.classList.remove('hidden');
   previewModal.classList.add('flex');
 }
-document.querySelectorAll('.previewBtn').forEach(function (btn) {
-  btn.addEventListener('click', function () { openPreview(btn.dataset.slug, btn.dataset.label); });
+function bindPreviewButtons() {
+  document.querySelectorAll('.previewBtn').forEach(function (btn) {
+    btn.onclick = function (ev) {
+      ev.stopPropagation();
+      openPreview(btn.dataset.slug, btn.dataset.label, btn.dataset.desc, btn.dataset.tags);
+    };
+  });
+}
+bindPreviewButtons();
+
+document.querySelectorAll('.templateCard').forEach(function (card) {
+  card.addEventListener('click', function (ev) {
+    if (ev.target.closest('button')) { return; }
+    var btn = card.querySelector('.previewBtn');
+    if (btn) { openPreview(btn.dataset.slug, btn.dataset.label, btn.dataset.desc, btn.dataset.tags); }
+  });
 });
+
 document.getElementById('closePreviewModal').addEventListener('click', function () {
   previewModal.classList.add('hidden');
   previewModal.classList.remove('flex');
@@ -1936,21 +2056,22 @@ function applyTemplate(slug, label) {
           showToast('✓ Đã đổi giao diện thành công.');
           document.querySelectorAll('.templateCard').forEach(function (card) {
             var isNow = card.dataset.slug === slug;
-            var cardBtn = card.querySelector('.applyBtn, button[disabled]');
-            var existingBadge = card.querySelector('span[style*="Đang sử dụng"], .templateBadge');
-            var imgWrap = card.querySelector('div[style*="height:220px"]');
-            var oldBadge = imgWrap ? imgWrap.querySelector('span') : null;
+            card.style.borderColor = isNow ? '#5B4CF6' : '#E5E7EB';
+            card.dataset.active = isNow ? 'true' : 'false';
+            var zone = card.querySelector('.previewZone');
+            var oldBadge = zone ? zone.querySelector('span.templateBadge, span[style*="Đang sử dụng"]') : null;
             if (oldBadge) { oldBadge.remove(); }
-            if (isNow && imgWrap) {
+            if (isNow && zone) {
               var b = document.createElement('span');
-              b.className = 'templateBadge absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white';
+              b.className = 'templateBadge absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm';
               b.style.background = '#5B4CF6';
               b.innerHTML = '{$icCheckSmallJs}Đang sử dụng';
-              imgWrap.appendChild(b);
+              zone.appendChild(b);
             }
+            var cardBtn = card.querySelector('.applyBtn, .p-4 button[disabled]');
             if (cardBtn) {
               if (isNow) {
-                cardBtn.outerHTML = '<button type="button" class="flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center cursor-default" style="background:#F1F5F9;color:#94A3B8" disabled>Đang dùng</button>';
+                cardBtn.outerHTML = '<button type="button" class="flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center cursor-default" style="background:#F1F5F9;color:#94A3B8" disabled>Đang sử dụng</button>';
               } else if (cardBtn.tagName === 'BUTTON' && cardBtn.disabled) {
                 cardBtn.outerHTML = '<button type="button" class="applyBtn flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-center text-white transition hover:opacity-90" style="background:#5B4CF6" data-slug="' + card.dataset.slug + '" data-label="' + card.querySelector('p.text-sm').textContent + '">Áp dụng</button>';
               }
@@ -1975,21 +2096,45 @@ function applyTemplate(slug, label) {
 
 function bindApplyButtons() {
   document.querySelectorAll('.applyBtn').forEach(function (btn) {
-    btn.onclick = function () { applyTemplate(btn.dataset.slug, btn.dataset.label); };
+    btn.onclick = function (ev) { ev.stopPropagation(); applyTemplate(btn.dataset.slug, btn.dataset.label); };
   });
 }
 bindApplyButtons();
 
 applyFromPreviewBtn.addEventListener('click', function () {
   if (currentPreviewSlug) {
-    var label = document.getElementById('previewModalTitle').textContent.replace('Xem trước — ', '');
+    var label = document.getElementById('previewModalTitle').textContent;
     applyTemplate(currentPreviewSlug, label);
   }
 });
+
+// Filter theo category + tìm kiếm — thuần Vanilla JS, không gọi backend.
+var activeFilter = 'all';
+var searchInput = document.getElementById('templateSearch');
+function applyTemplateFilters() {
+  var q = (searchInput.value || '').toLowerCase().trim();
+  var visibleCount = 0;
+  document.querySelectorAll('.templateCard').forEach(function (card) {
+    var matchesFilter = activeFilter === 'all' || card.dataset.category === activeFilter;
+    var matchesSearch = q === '' || card.dataset.search.indexOf(q) !== -1;
+    var show = matchesFilter && matchesSearch;
+    card.style.display = show ? '' : 'none';
+    if (show) { visibleCount++; }
+  });
+  document.getElementById('templateEmptyState').classList.toggle('hidden', visibleCount > 0);
+}
+document.querySelectorAll('.filterChip').forEach(function (chip) {
+  chip.addEventListener('click', function () {
+    document.querySelectorAll('.filterChip').forEach(function (c) { c.classList.remove('filterChipActive'); });
+    chip.classList.add('filterChipActive');
+    activeFilter = chip.dataset.filter;
+    applyTemplateFilters();
+  });
+});
+searchInput.addEventListener('input', applyTemplateFilters);
 </script>
 HTML;
 
-    $header = pageHeader('Giao diện', 'Chọn giao diện phù hợp với phong cách của bạn.');
     return layoutAdmin('Giao diện — Admin', 'templates', $header . $body, $user);
 }
 
